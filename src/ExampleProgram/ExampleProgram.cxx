@@ -10,7 +10,26 @@ int main() {
 	GachaPool<int> pool({1, 2, 3, 4, 5});
 	base_iterator<GachaPool<int>::InternalType> j(pool.begin());
 	for (int i = 0; i < 5; i++) {
-		std::cout << pool[i] << " | " << *j << std::endl;
+		std::cout << i << ": " << pool[i] << " | " << *j << std::endl;
+		j++;
+	}
+	pool.resize(50, 6);
+	std::cout << pool.size() << std::endl;
+	j = pool.begin();
+	for (int i = 0; i < pool.size(); i++) {
+		std::cout << i << ": " << pool[i] << " | " << *j << std::endl;
+		j++;
+	}
+	pool.pop(3);
+	j = pool.begin();
+	for (int i = 0; i < pool.size(); i++) {
+		std::cout << i << ": " << pool[i] << " | " << *j << std::endl;
+		j++;
+	}
+	pool.resize(100);
+	j = pool.begin();
+	for (int i = 0; i < pool.size(); i++) {
+		std::cout << i << ": " << pool[i] << " | " << *j << std::endl;
 		j++;
 	}
 	system("pause");
