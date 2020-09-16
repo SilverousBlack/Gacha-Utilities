@@ -122,10 +122,16 @@ namespace gacha_utilities {
 		template<typename Iterator>
 		GachaPool(Iterator BeginIter, Iterator EndIter, AllocatorType Alloc = alloc());
 
+		GachaPool<type, alloc>& operator= (const GachaPool<type, alloc> OtherPool);
+		GachaPool<type, alloc>& operator= (std::initializer_list<type> InitList);
+
 		SizeType size() const;
 		GachaPool<type, alloc>& resize(SizeType NewSize, InternalType FillReference = InternalType());
 		GachaPool<type, alloc>& pop(DifferenceType index, SizeType range);
 		GachaPool<type, alloc>& pop(iterator BeginIter, iterator EndIter);
+		GachaPool<type, alloc>& append(InternalType Object, SizeType Count);
+		template<typename Iterator>
+		GachaPool<type, alloc>& append(Iterator BeginIter, Iterator EndIter);
 
 		InternalType operator [](DifferenceType index);
 
@@ -133,7 +139,7 @@ namespace gacha_utilities {
 		iterator end();
 	protected:
 		void __resize(SizeType NewSize, InternalType FillReference);
-		void __append(InternalType Object);
+		void __append(InternalType Object, SizeType Count = 1);
 		template<typename Iterator>
 		void __append(Iterator BeginIter, Iterator EndIter);
 		void __pop(DifferenceType index, SizeType range = 0);
@@ -197,6 +203,44 @@ namespace gacha_utilities {
 	}
 
 	template<typename type, typename alloc>
+	template<typename OtherAllocator>
+	inline GachaPool<type, alloc>::GachaPool(const SameType<OtherAllocator>& OtherPool)
+		: Allocator(alloc())
+		, data(new InternalType[OtherPool.size()])
+		, datasize(OtherPool.size())
+	{
+		for (auto i = OtherPool.begin(), j = this->begin(); i != OtherPool.end(); i++, j++) {
+			(*j) = (*i);
+		}
+	}
+
+	template<typename type, typename alloc>
+	template<typename Iterator>
+	inline GachaPool<type, alloc>::GachaPool(Iterator BeginIter, Iterator EndIter, AllocatorType Alloc)
+		: Allocator(Alloc)
+		, data(new InternalType[std::distance(BeginIter, EndIter)])
+		, datasize(std::distance(BeginIter, EndIter))
+	{
+		auto j = this->begin();
+		for (auto i = BeginIter; i != EndIter; i++, j++) {
+			(*j) = (*i);
+		}
+	}
+
+	template<typename type, typename alloc>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::operator=(const GachaPool<type, alloc> OtherPool){	
+		if (data != nullptr) delete[] data;
+		Allocator = OtherPool.Allocator;
+		data = new InternalType[OtherPool.size()];
+		datasize = OtherPool.size();
+		auto j = this->begin();
+		for (auto i = OtherPool.begin(); i != OtherPool.end(); i++, j++) {
+			(*j) = (*i);
+		}
+		return (*this);
+	}
+
+	template<typename type, typename alloc>
 	inline unsigned long long GachaPool<type, alloc>::size() const{
 		return SizeType(datasize);
 	}
@@ -216,6 +260,12 @@ namespace gacha_utilities {
 	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(iterator BeginIter, iterator EndIter){
 		__pop(BeginIter, EndIter);
+		return (*this);
+	}
+
+	template<typename type, typename alloc>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::append(InternalType Object, SizeType Count){
+		__append(Object, Count);
 		return (*this);
 	}
 
@@ -254,8 +304,8 @@ namespace gacha_utilities {
 	}
 
 	template<typename type, typename alloc>
-	inline void GachaPool<type, alloc>::__append(InternalType Object){
-		auto maxsize = datasize + 1;
+	inline void GachaPool<type, alloc>::__append(InternalType Object, SizeType Count){
+		auto maxsize = datasize + Count;
 		auto copy = new InternalType[datasize];
 		for (int i = 0; i < datasize; i++) {
 			copy[i] = data[i];
@@ -265,8 +315,17 @@ namespace gacha_utilities {
 		for (int i = 0; i < datasize; i++) {
 			data[i] = copy[i];
 		}
-		data[datasize - 1] = Object;
-		datasize++;
+		for (int i = datasize; i < maxsize; i++) {
+			data[i] = Object;
+		}
+		datasize += maxsize;
+	}
+
+	template<typename type, typename alloc>
+	template<typename Iterator>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::append(Iterator BeginIter, Iterator EndIter){
+		__append(BeginIter, EndIter);
+		return (*this);
 	}
 
 	template<typename type, typename alloc>
