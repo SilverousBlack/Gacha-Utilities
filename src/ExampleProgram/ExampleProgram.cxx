@@ -20,13 +20,17 @@ int main() {
 		std::cout << i << ": " << pool[i] << " | " << *j << std::endl;
 		j++;
 	}
-	pool.pop(3);
+	signed long long begin = 7;
+	unsigned long long end = 9;
+	pool.pop(begin, 9);
+	std::cout << pool.size() << std::endl;
 	j = pool.begin();
 	for (int i = 0; i < pool.size(); i++) {
 		std::cout << i << ": " << pool[i] << " | " << *j << std::endl;
 		j++;
 	}
 	pool.resize(100);
+	std::cout << pool.size() << std::endl;
 	j = pool.begin();
 	for (int i = 0; i < pool.size(); i++) {
 		std::cout << i << ": " << pool[i] << " | " << *j << std::endl;

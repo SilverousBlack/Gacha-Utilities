@@ -124,7 +124,8 @@ namespace gacha_utilities {
 
 		SizeType size() const;
 		GachaPool<type, alloc>& resize(SizeType NewSize, InternalType FillReference = InternalType());
-		GachaPool<type, alloc>& pop(DifferenceType index);
+		GachaPool<type, alloc>& pop(DifferenceType index, SizeType range);
+		GachaPool<type, alloc>& pop(iterator BeginIter, iterator EndIter);
 
 		InternalType operator [](DifferenceType index);
 
@@ -133,7 +134,10 @@ namespace gacha_utilities {
 	protected:
 		void __resize(SizeType NewSize, InternalType FillReference);
 		void __append(InternalType Object);
-		void __pop(DifferenceType index);
+		template<typename Iterator>
+		void __append(Iterator BeginIter, Iterator EndIter);
+		void __pop(DifferenceType index, SizeType range = 0);
+		void __pop(iterator BeginIter, iterator EndIter);
 	private:
 		InternalType* data;
 		SizeType datasize;
@@ -204,8 +208,14 @@ namespace gacha_utilities {
 	}
 
 	template<typename type, typename alloc>
-	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(DifferenceType index){
-		__pop(index);
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(DifferenceType index, SizeType range){
+		__pop(index, range);
+		return (*this);
+	}
+
+	template<typename type, typename alloc>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(iterator BeginIter, iterator EndIter){
+		__pop(BeginIter, EndIter);
 		return (*this);
 	}
 
@@ -221,8 +231,7 @@ namespace gacha_utilities {
 
 	template<typename type, typename alloc>
 	inline base_iterator<type> GachaPool<type, alloc>::end() {
-		auto temp = iterator(&data[datasize - 1]);
-		temp++;
+		auto temp = iterator(&data[datasize]);
 		return iterator(temp);
 	}
 
@@ -246,25 +255,76 @@ namespace gacha_utilities {
 
 	template<typename type, typename alloc>
 	inline void GachaPool<type, alloc>::__append(InternalType Object){
-		__resize(datasize + 1);
-		data[datasize - 1] = Object;
-	}
-
-	template<typename type, typename alloc>
-	inline void GachaPool<type, alloc>::__pop(DifferenceType index){
+		auto maxsize = datasize + 1;
 		auto copy = new InternalType[datasize];
 		for (int i = 0; i < datasize; i++) {
 			copy[i] = data[i];
 		}
 		delete[] data;
-		data = new InternalType[datasize - 1];
+		data = new InternalType[maxsize];
+		for (int i = 0; i < datasize; i++) {
+			data[i] = copy[i];
+		}
+		data[datasize - 1] = Object;
+		datasize++;
+	}
+
+	template<typename type, typename alloc>
+	template<typename Iterator>
+	inline void GachaPool<type, alloc>::__append(Iterator BeginIter, Iterator EndIter) {
+		auto maxsize = datasize + SizeType(std::distance(BeginIter, EndIter));
+		auto copy = new InternalType[datasize];
+		for (int i = 0; i < datasize; i++) {
+			copy[i] = data[i];
+		}
+		delete[] data;
+		data = new InternalType[maxsize];
+		for (int i = 0; i < datasize; i++) {
+			data[i] = copy[i];
+		}
+		for (int i = 0, j = datasize; j < maxsize; i++, j++) {
+			data[j] = (*(BeginIter + i));
+		}
+		datasize = maxsize;
+	}
+
+	template<typename type, typename alloc>
+	inline void GachaPool<type, alloc>::__pop(DifferenceType index, SizeType range){
+		auto copy = new InternalType[datasize];
+		auto NewSize = datasize - range;
+		for (int i = 0; i < datasize; i++) {
+			copy[i] = data[i];
+		}
+		delete[] data;
+		data = new InternalType[NewSize];
 		for (int i = 0; i < index; i++) {
 			data[i] = copy[i];
 		}
-		for (int i = index; i < datasize; i++) {
-			data[i] = copy[i + 1];
+		for (int i = index, j = index + range; i < NewSize; i++, j++) {
+			data[i] = copy[j];
 		}
-		datasize--;
+		datasize = NewSize;
+	}
+
+	template<typename type, typename alloc>
+	inline void GachaPool<type, alloc>::__pop(iterator BeginIter, iterator EndIter){
+		auto dodgerange = std::distance(BeginIter, EndIter);
+		auto NewSize = datasize - dodgerange;
+		auto begin = std::distance(this->begin(), BeginIter);
+		auto end = begin + dodgerange;
+		auto copy = new InternalType[datasize];
+		for (int i = 0; i < datasize; i++) {
+			copy[i] = data[i];
+		}
+		delete[] data;
+		data = new InternalType[NewSize];
+		for (int i = 0; i < begin; i++) {
+			data[i] = copy[i];
+		}
+		for (int i = begin, j = end; i < NewSize; i++, j++) {
+			data[i] = copy[j];
+		}
+		datasize = NewSize;
 	}
 
 };
