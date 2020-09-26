@@ -95,6 +95,16 @@ namespace gacha_utilities {
 			GachaPoolException() {}
 			~GachaPoolException() {}
 		};
+		class IllegalZeroSize : public GachaPoolException {
+		public:
+			IllegalZeroSize() {}
+			~IllegalZeroSize() {}
+		};
+		class SizeBeyondMaximum : public GachaPoolException {
+		public:
+			SizeBeyondMaximum() {}
+			~SizeBeyondMaximum() {}
+		};
 		class IndexOutOfRange : public GachaPoolException {
 		public:
 			IndexOutOfRange() {}
@@ -114,6 +124,11 @@ namespace gacha_utilities {
 		public:
 			CannotConvertToKnownIterator() {}
 			~CannotConvertToKnownIterator() {}
+		};
+		class AssignSizeOutOfRange : public GachaPoolException {
+		public:
+			AssignSizeOutOfRange() {}
+			~AssignSizeOutOfRange() {}
 		};
 	};
 
@@ -137,6 +152,9 @@ namespace gacha_utilities {
 		using reverse_iterator = base_reverse_iterator<type>;
 		using const_reverse_iterator = base_reverse_iterator<const type>;
 
+		static SizeType maxsize();
+		static SizeType minsize();
+
 		GachaPool(SizeType InitSize = 0, InternalType InitVal = InternalType());
 		GachaPool(SizeType InitSize, InternalType InitVal, AllocatorType Alloc = alloc());
 		GachaPool(std::initializer_list<type> InitList);
@@ -151,23 +169,59 @@ namespace gacha_utilities {
 
 		GachaPool<type, alloc>& operator= (const GachaPool<type, alloc> OtherPool);
 		GachaPool<type, alloc>& operator= (std::initializer_list<type> InitList);
+		template<typename Container>
+		GachaPool<type, alloc>& operator= (Container OtherContainer);
 
 		SizeType size() const;
+
 		GachaPool<type, alloc>& resize(SizeType NewSize, InternalType FillReference = InternalType());
+
+		GachaPool<type, alloc>& pop();
 		GachaPool<type, alloc>& pop(DifferenceType index, SizeType range = 0);
+		GachaPool<type, alloc>& pop(iterator iter);
+		GachaPool<type, alloc>& pop(const_iterator iter);
+		GachaPool<type, alloc>& pop(reverse_iterator iter);
+		GachaPool<type, alloc>& pop(const_reverse_iterator iter);
 		GachaPool<type, alloc>& pop(iterator BeginIter, iterator EndIter);
 		GachaPool<type, alloc>& pop(const_iterator BeginIter, const_iterator EndIter);
 		GachaPool<type, alloc>& pop(reverse_iterator BeginIter, reverse_iterator EndIter);
 		GachaPool<type, alloc>& pop(const_reverse_iterator BeginIter, const_reverse_iterator EndIter);
-		GachaPool<type, alloc>& append(InternalType Object, SizeType Count = 1) noexcept;
+
+		GachaPool<type, alloc>& append(InternalType Object, SizeType Count = 1);
 		template<typename Iterator>
 		GachaPool<type, alloc>& append(Iterator BeginIter, Iterator EndIter);
+
 		InternalType access(DifferenceType index);
 		GachaPool<type, alloc> access(DifferenceType index, SizeType range);
 		GachaPool<type, alloc> access(iterator BeginIter, iterator EndIter);
 		GachaPool<type, alloc> access(const_iterator BeginIter, const_iterator EndIter);
 		GachaPool<type, alloc> access(reverse_iterator BeginIter, reverse_iterator EndIter);
 		GachaPool<type, alloc> access(const_reverse_iterator BeginIter, const_reverse_iterator EndIter);
+
+		GachaPool<type, alloc>& assign(InternalType obj, DifferenceType offset = 0, SizeType size = 0);
+		template<typename Iterator>
+		GachaPool<type, alloc>& assign(Iterator BeginIter, Iterator EndIter, DifferenceType offset);
+		template<template... ArgumentType>
+		GachaPool<type, alloc>& assign(DifferenceType Offset, SizeType range, InternalType(*function)(ArgumentType...), ArgumentType... Args);
+
+		template<typename Container>
+		GachaPool<type, alloc>& copy(Container target);
+		template<typename Iterator>
+		GachaPool<type, alloc>& copy(Iterator BeginIter, Iterator EndIter);
+
+		template<typename Container>
+		bool hard_compare(Container target, bool (*Comparator)(InternalType, InternalType) = [](InternalType left, InternalType right) { return left == right });
+		template<typename Iterator>
+		bool hard_compare(Iterator BeginIter, Iterator EndIter, bool (*Comparator)(InternalType, InternalType) = [](InternalType left, InternalType right) { return left == right });
+		template<typename Iterator>
+		bool hard_compare(iterator srcbegin, iterator srcend, Iterator targetbegin, Iterator targetend, bool (*Comparator)(InternalType, InternalType) = [](InternalType left, InternalType right) { return left == right });
+		
+		template<typename Container>
+		bool free_compare(Container target, bool (*Comparator)(InternalType, InternalType) = [](InternalType left, InternalType right) { return left == right });
+		template<typename Iterator>
+		bool free_compare(Iterator BeginIter, Iterator EndIter, bool (*Comparator)(InternalType, InternalType) = [](InternalType left, InternalType right) { return left == right });
+		template<typename Iterator>
+		bool free_compare(iterator srcbegin, iterator srcend, Iterator targetbegin, Iterator targerend, bool (*Comparator)(InternalType, InternalType) = [](InternalType left, InternalType right) { return left == right });
 
 		bool verify(DifferenceType index);
 		bool verify(iterator iter);
@@ -182,6 +236,10 @@ namespace gacha_utilities {
 		bool dereferrencible(const_iterator iter);
 		bool dereferrencible(reverse_iterator iter);
 		bool dereferrencible(const_reverse_iterator iter);
+		bool dereferrencible(iterator BeginIter, iterator EndIter);
+		bool dereferrencible(const_iterator BeginIter, const_iterator EndIter);
+		bool dereferrencible(reverse_iterator BeginIter, reverse_iterator EndIter);
+		bool dereferrencible(const_reverse_iterator BeginIter, const_reverse_iterator EndIter);
 
 		InternalType operator [](DifferenceType index);
 
@@ -200,12 +258,16 @@ namespace gacha_utilities {
 		void __append(Iterator BeginIter, Iterator EndIter);
 		void __pop(DifferenceType index, SizeType range = 0);
 		void __pop(iterator BeginIter, iterator EndIter);
+		void __pop(reverse_iterator BeginIter, reverse_iterator EndIter);
+		void __flush();
 
 		template<typename Iterator>
 		iterator _convert_iter_type(Iterator type);
 
+		void _test_resize_size(SizeType NewSize);
 		void _test_pop_range(DifferenceType index, SizeType range);
 		void _test_pop_range(iterator BeginIter, iterator EndIter);
+		void _test_pop_range(reverse_iterator BeginIter, reverse_iterator EndIter);
 		template<typename Iterator>
 		void _test_append_range(Iterator BeginIter, Iterator EndIter);
 		void _test_access_range(DifferenceType index);
@@ -216,6 +278,16 @@ namespace gacha_utilities {
 		SizeType datasize;
 		AllocatorType Allocator;
 	};
+
+	template<typename type, typename alloc>
+	inline long long unsigned int GachaPool<type, alloc>::maxsize(){
+		return SizeType(static_cast<SizeType>(std::numeric_limits<DifferenceType>::max()));
+	}
+
+	template<typename type, typename alloc>
+	inline long long unsigned int GachaPool<type, alloc>::minsize(){
+		return SizeType(0);
+	}
 
 	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>::GachaPool(SizeType InitSize, InternalType InitVal)
@@ -297,6 +369,19 @@ namespace gacha_utilities {
 	}
 
 	template<typename type, typename alloc>
+	template<typename Container>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::operator=(Container OtherContainer){
+		if (this->data != nullptr) delete[] this->data;
+		this->data = new InternalType[OtherContainer.size()];
+		this->datasize = OtherContainer.size();
+		this->Allocator = alloc()
+		for (int i = 0; i < this->datasize; i++) {
+			this->data[i] = OtherContainer[i];
+		}
+		return (*this);
+	}
+
+	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>& GachaPool<type, alloc>::operator=(const GachaPool<type, alloc> OtherPool){	
 		if (this->data != nullptr) delete[] this->data;
 		this->Allocator = OtherPool.Allocator;
@@ -329,19 +414,50 @@ namespace gacha_utilities {
 
 	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>& GachaPool<type, alloc>::resize(SizeType NewSize, InternalType FillReference){
+		_test_resize_size(NewSize);
 		__resize(NewSize, FillReference);
 		return (*this);
 	}
 
 	template<typename type, typename alloc>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(){
+		_test_resize_size(this->size() - 1);
+		_test_pop_range(this->size() - 1, 0);
+		__pop(this->size() - 1);
+		return (*this);
+	}
+
+	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(DifferenceType index, SizeType range){
+		_test_resize_size(this->size() - (index + range));
 		_test_pop_range(index, range);
 		__pop(index, range);
 		return (*this);
 	}
 
 	template<typename type, typename alloc>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(iterator iter){
+		return this->pop(iter, iter);
+	}
+
+	template<typename type, typename alloc>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(const_iterator iter){
+		return this->pop(iter, iter);
+	}
+
+	template<typename type, typename alloc>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(reverse_iterator iter){
+		return this->pop(iter, iter);
+	}
+
+	template<typename type, typename alloc>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(const_reverse_iterator iter){
+		return this->pop(iter, iter);
+	}
+
+	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(iterator BeginIter, iterator EndIter){
+		_test_resize_size(this->size() - std::distance(BeginIter, EndIter));
 		_test_pop_range(BeginIter, EndIter);
 		__pop(BeginIter, EndIter);
 		return (*this);
@@ -354,16 +470,20 @@ namespace gacha_utilities {
 
 	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(reverse_iterator BeginIter, reverse_iterator EndIter){
-		return pop(_convert_iter_type(EndIter) + 1, _convert_iter_type(BeginIter) + 1);
+		_test_resize_size(this->size() - std::distance(BeginIter, EndIter));
+		_test_pop_range(BeginIter, EndIter);
+		__pop(BeginIter, EndIter);
+		return (*this);
 	}
 
 	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>& GachaPool<type, alloc>::pop(const_reverse_iterator BeginIter, const_reverse_iterator EndIter){
-		return pop(_convert_iter_type(EndIter) + 1, _convert_iter_type(BeginIter) + 1);
+		return pop(reverse_iterator(BeginIter), reverse_iterator(EndIter));
 	}
 
 	template<typename type, typename alloc>
-	inline GachaPool<type, alloc>& GachaPool<type, alloc>::append(InternalType Object, SizeType Count) noexcept {
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::append(InternalType Object, SizeType Count){
+		_test_resize_size(this->size() + Count);
 		__append(Object, Count);
 		return (*this);
 	}
@@ -446,12 +566,47 @@ namespace gacha_utilities {
 
 	template<typename type, typename alloc>
 	inline bool GachaPool<type, alloc>::verify(const_reverse_iterator BeginIter, const_reverse_iterator EndIter){
-		return (std::distance(this->crbegin(), BeginIter) >= 0 && std::distance(BeginIter, this->crend()) >= 0) && (std::distance(this->crbegin(), EndIter) >= 0 && std::distance(EndIter, this->crend()) >= 0)
+		return (std::distance(this->crbegin(), BeginIter) >= 0 && std::distance(BeginIter, this->crend()) >= 0) && (std::distance(this->crbegin(), EndIter) >= 0 && std::distance(EndIter, this->crend()) >= 0);
 	}
 
 	template<typename type, typename alloc>
 	inline bool GachaPool<type, alloc>::dereferrencible(iterator iter){
 		return (std::distance(this->begin(), iter) >= 0 && std::distance(iter, this->end()) > 0);
+	}
+
+	template<typename type, typename alloc>
+	inline bool GachaPool<type, alloc>::dereferrencible(const_iterator iter){
+		return (std::distance(this->cbegin(), iter) >= 0 && std::distance(iter, this->cend()) > 0);
+	}
+
+	template<typename type, typename alloc>
+	inline bool GachaPool<type, alloc>::dereferrencible(reverse_iterator iter){
+		return (std::distance(this->rbegin(), iter) >= 0 && std::distance(iter, this->rend()) > 0);
+	}
+
+	template<typename type, typename alloc>
+	inline bool GachaPool<type, alloc>::dereferrencible(const_reverse_iterator iter){
+		return (std::distance(this->crbegin(), iter) >= 0 && std::distance(iter, this->crend()) > 0);
+	}
+
+	template<typename type, typename alloc>
+	inline bool GachaPool<type, alloc>::dereferrencible(iterator BeginIter, iterator EndIter){
+		return (std::distance(this->begin(), BeginIter) >= 0 && std::distance(BeginIter, this->end()) > 0) && (std::distance(this->begin(), EndIter) >= 0 && std::distance(EndIter, this->end()) > 0);
+	}
+
+	template<typename type, typename alloc>
+	inline bool GachaPool<type, alloc>::dereferrencible(const_iterator BeginIter, const_iterator EndIter){
+		return (std::distance(this->cbegin(), BeginIter) >= 0 && std::distance(BeginIter, this->cend()) > 0) && (std::distance(this->cbegin(), EndIter) >= 0 && std::distance(EndIter, this->cend()) > 0);
+	}
+
+	template<typename type, typename alloc>
+	inline bool GachaPool<type, alloc>::dereferrencible(reverse_iterator BeginIter, reverse_iterator EndIter){
+		return (std::distance(this->rbegin(), BeginIter) >= 0 && std::distance(BeginIter, this->rend()) > 0) && (std::distance(this->rbegin(), EndIter) >= 0 && std::distance(EndIter, this->rend()) > 0);
+	}
+
+	template<typename type, typename alloc>
+	inline bool GachaPool<type, alloc>::dereferrencible(const_reverse_iterator BeginIter, const_reverse_iterator EndIter){
+		return (std::distance(this->crbegin(), BeginIter) >= 0 && std::distance(BeginIter, this->crend()) > 0) && (std::distance(this->crbegin(), EndIter) >= 0 && std::distance(EndIter, this->crend()) > 0);
 	}
 
 	template<typename type, typename alloc>
@@ -540,6 +695,7 @@ namespace gacha_utilities {
 	template<typename type, typename alloc>
 	template<typename Iterator>
 	inline GachaPool<type, alloc>& GachaPool<type, alloc>::append(Iterator BeginIter, Iterator EndIter){
+		_test_resize_size(this->size() + std::distance(BeginIter, EndIter));
 		_test_append_range(BeginIter, EndIter);
 		__append(BeginIter, EndIter);
 		return (*this);
@@ -584,7 +740,7 @@ namespace gacha_utilities {
 	template<typename type, typename alloc>
 	inline void GachaPool<type, alloc>::__pop(DifferenceType index, SizeType range){
 		auto copy = new InternalType[this->datasize];
-		auto NewSize = this->datasize - range;
+		auto NewSize = this->datasize - (range + 1);
 		for (int i = 0; i < this->datasize; i++) {
 			copy[i] = this->data[i];
 		}
@@ -593,7 +749,7 @@ namespace gacha_utilities {
 		for (int i = 0; i < index; i++) {
 			this->data[i] = copy[i];
 		}
-		for (int i = index, j = index + range; i < NewSize; i++, j++) {
+		for (int i = index, j = index + (range + 1); i < NewSize; i++, j++) {
 			this->data[i] = copy[j];
 		}
 		this->datasize = NewSize;
@@ -601,10 +757,10 @@ namespace gacha_utilities {
 
 	template<typename type, typename alloc>
 	inline void GachaPool<type, alloc>::__pop(iterator BeginIter, iterator EndIter){
-		auto dodgerange = std::distance(BeginIter, EndIter);
+		auto dodgerange = std::distance(BeginIter, EndIter) + 1;
 		auto NewSize = this->datasize - dodgerange;
 		auto begin = std::distance(this->begin(), BeginIter);
-		auto end = begin + dodgerange;
+		auto end = begin + dodgerange - 1;
 		auto copy = new InternalType[this->datasize];
 		for (int i = 0; i < this->datasize; i++) {
 			copy[i] = this->data[i];
@@ -621,6 +777,40 @@ namespace gacha_utilities {
 	}
 
 	template<typename type, typename alloc>
+	inline void GachaPool<type, alloc>::__pop(reverse_iterator BeginIter, reverse_iterator EndIter){
+		auto dodgerange = std::distance(BeginIter, EndIter) + 1;
+		auto NewSize = this->datasize - dodgerange;
+		auto end = std::distance(this->rbegin(), BeginIter);
+		auto begin = end + dodgerange - 1;
+		auto copy = new InternalType[this->datasize];
+		for (int i = 0; i < this->datasize; i++) {
+			copy[i] = this->data[i];
+		}
+		delete[] this->data;
+		this->data = new InternalType[NewSize];
+		for (int i = 0; i < begin; i++) {
+			this->data[i] = copy[i];
+		}
+		for (int i = begin, j = end; i < NewSize; i++, j++) {
+			this->data[i] = copy[j];
+		}
+		this->datasize = NewSize;
+	}
+
+	template<typename type, typename alloc>
+	inline void GachaPool<type, alloc>::__flush(){
+		delete[] this->data;
+		this->datasize = 0;
+	}
+
+	template<typename type, typename alloc>
+	inline void GachaPool<type, alloc>::_test_resize_size(SizeType NewSize){
+		using namespace gachapoolexceptions;
+		if (NewSize < this->minsize()) throw IllegalZeroSize();
+		else if (NewSize > this->maxsize()) throw SizeBeyondMaximum();
+	}
+
+	template<typename type, typename alloc>
 	inline void GachaPool<type, alloc>::_test_pop_range(DifferenceType index, SizeType range){
 		using namespace gachapoolexceptions;
 		if (index >= this->datasize) throw IndexOutOfRange();
@@ -631,8 +821,16 @@ namespace gacha_utilities {
 	inline void GachaPool<type, alloc>::_test_pop_range(iterator BeginIter, iterator EndIter){
 		using namespace gachapoolexceptions;
 		if (std::distance(BeginIter, EndIter) < 0) throw UnidentifiedIteratorRange();
-		else if (std::distance(BeginIter, this->begin()) < 0) throw IteratorOutOfRange();
-		else if (std::distance(EndIter, this->end()) > datasize) throw IteratorOutOfRange();
+		else if (std::distance(this->begin(), BeginIter) < 0) throw IteratorOutOfRange();
+		else if (std::distance(EndIter, this->end()) <= 0) throw IteratorOutOfRange();
+	}
+
+	template<typename type, typename alloc>
+	inline void GachaPool<type, alloc>::_test_pop_range(reverse_iterator BeginIter, reverse_iterator EndIter){
+		using namespace gachapoolexceptions;
+		if (std::distance(BeginIter, EndIter) < 0) throw UnidentifiedIteratorRange();
+		else if (std::distance(this->rbegin(), BeginIter) < 0) throw IteratorOutOfRange();
+		else if (std::distance(EndIter, this->rend()) <= 0) throw IteratorOutOfRange();
 	}
 
 	template<typename type, typename alloc>
@@ -652,8 +850,8 @@ namespace gacha_utilities {
 	inline void GachaPool<type, alloc>::_test_aceess_range(iterator BeginIter, iterator EndIter){
 		using namespace gachapoolexceptions;
 		if (std::distance(BeginIter, EndIter) < 0) throw UnidentifiedIteratorRange();
-		else if (BeginIter < this->begin()) throw IteratorOutOfRange();
-		else if (EndIter > this->end()) throw IteratorOutOfRange();
+		else if (std::distance(this->begin(), BeginIter) < 0) throw IteratorOutOfRange();
+		else if (std::distance(EndIter, this->end()) > this->datasize) throw IteratorOutOfRange();
 	}
 
 };

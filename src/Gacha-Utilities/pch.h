@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <new>
 #include <random>
