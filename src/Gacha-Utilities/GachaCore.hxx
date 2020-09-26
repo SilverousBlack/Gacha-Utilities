@@ -201,7 +201,7 @@ namespace gacha_utilities {
 		GachaPool<type, alloc>& assign(InternalType obj, DifferenceType offset = 0, SizeType size = 0);
 		template<typename Iterator>
 		GachaPool<type, alloc>& assign(Iterator BeginIter, Iterator EndIter, DifferenceType offset);
-		template<template... ArgumentType>
+		template<typename... ArgumentType>
 		GachaPool<type, alloc>& assign(DifferenceType Offset, SizeType range, InternalType(*function)(ArgumentType...), ArgumentType... Args);
 
 		template<typename Container>
@@ -374,7 +374,7 @@ namespace gacha_utilities {
 		if (this->data != nullptr) delete[] this->data;
 		this->data = new InternalType[OtherContainer.size()];
 		this->datasize = OtherContainer.size();
-		this->Allocator = alloc()
+		this->Allocator = alloc();
 		for (int i = 0; i < this->datasize; i++) {
 			this->data[i] = OtherContainer[i];
 		}
