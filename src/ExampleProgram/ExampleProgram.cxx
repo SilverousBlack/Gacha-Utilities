@@ -9,8 +9,8 @@ int main() {
 	std::vector<char> some = { 2, 3, 4, 6, 0, 7, 8, 9, 21 };
 	GachaPool<int> pool = { 2, 3, 4, 5, 0, 7, 8, 9, 21 };
 	GachaPool<int> pool2 = { 2, 3, 4, 5, 0, 7, 8, 9, 22 };
-	pool.append(some.rbegin(), some.rend());
-	pool.pop(pool.end());
+	pool.append(some.begin(), some.end());
+	pool.pop(pool.begin());
 	base_iterator<GachaPool<int>::InternalType> j = pool.begin();
 	for (int i = 0; i < pool.size(); i++, j++) {
 		std::cout << pool[i] << " | " << (*j) << std::endl;
