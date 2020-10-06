@@ -135,9 +135,15 @@ namespace gacha_utilities {
 			AssignSizeOutOfRange() {}
 			~AssignSizeOutOfRange() {}
 		};
+		class CopySizeMismatch : public GachaPoolException {
+		public:
+			CopySizeMismatch() {}
+			~CopySizeMismatch() {}
+		};
 		class CopySizeBeyondAllocation : public GachaPoolException {
 		public:
-
+			CopySizeBeyondAllocation() {}
+			~CopySizeBeyondAllocation() {}
 		};
 	};
 
@@ -219,6 +225,8 @@ namespace gacha_utilities {
 		GachaPool<type, alloc>& copy(Iterator BeginIter, Iterator EndIter);
 		template<typename Container>
 		GachaPool<type, alloc>& apparent_copy(Container target);
+		template<typename Iterator>
+		GachaPool<type, alloc>& apparent_copy(Iterator BeginIter, Iterator EndIter);
 
 		template<typename Container>
 		bool hard_compare(Container target, bool (*Comparator)(InternalType, InternalType) = [](InternalType left, InternalType right) { return left == right });
@@ -280,9 +288,9 @@ namespace gacha_utilities {
 		void __assign(DifferenceType offset, SizeType range, InternalType(*function)(ArgumentType...), ArgumentType... arguments);
 
 		template<typename Container>
-		void __copy(Container target);
+		void __apparent_copy(Container target);
 		template<typename Iterator>
-		void __copy(Iterator BeginIter, Iterator EndIter);
+		void __apparent_copy(Iterator BeginIter, Iterator EndIter);
 
 		void __flush();
 
@@ -337,8 +345,8 @@ namespace gacha_utilities {
 	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>::GachaPool(SizeType InitSize, InternalType InitVal, AllocatorType Alloc)
 		: Allocator(Alloc)
-		, this->data(new InternalType[InitSize])
-		, this->datasize(InitSize)
+		, data(new InternalType[InitSize])
+		, datasize(InitSize)
 	{
 		_test_resize_size(this->datasize);
 		for (SizeType i = 0; i < InitSize; i++) {
@@ -349,8 +357,8 @@ namespace gacha_utilities {
 	template<typename type, typename alloc>
 	inline GachaPool<type, alloc>::GachaPool(std::initializer_list<type> InitList)
 		: Allocator(alloc())
-		, this->data(new InternalType[InitList.size()])
-		, this->datasize(InitList.size())
+		, data(new InternalType[InitList.size()])
+		, datasize(InitList.size())
 	{
 		_test_resize_size(this->datasize);
 		auto j = this->begin();
@@ -767,6 +775,34 @@ namespace gacha_utilities {
 	}
 
 	template<typename type, typename alloc>
+	template<typename Container>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::copy(Container target){
+		return this->apparent_copy(target);
+	}
+
+	template<typename type, typename alloc>
+	template<typename Iterator>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::copy(Iterator BeginIter, Iterator EndIter){
+		return this->apparent_copy(BeginIter, EndIter);
+	}
+
+	template<typename type, typename alloc>
+	template<typename Container>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::apparent_copy(Container target){
+		_test_apparent_copy_size(target.size());
+		__apparent_copy(target);
+		return (*this);
+	}
+
+	template<typename type, typename alloc>
+	template<typename Iterator>
+	inline GachaPool<type, alloc>& GachaPool<type, alloc>::apparent_copy(Iterator BeginIter, Iterator EndIter){
+		_test_apparent_copy_size(std::distance(BeginIter, EndIter));
+		__apparent_copy(BeginIter, EndIter);
+		return (*this);
+	}
+
+	template<typename type, typename alloc>
 	template<typename Iterator>
 	inline void GachaPool<type, alloc>::__append(Iterator BeginIter, Iterator EndIter) {
 		auto maxsize = this->datasize + SizeType(std::distance(BeginIter, EndIter));
@@ -805,7 +841,7 @@ namespace gacha_utilities {
 
 	template<typename type, typename alloc>
 	template<typename Container>
-	inline void GachaPool<type, alloc>::__copy(Container target){
+	inline void GachaPool<type, alloc>::__apparent_copy(Container target){
 		for (DifferenceType i = 0; i < target.size(); i++) {
 			this->data[i] = target[i];
 		}
@@ -813,10 +849,10 @@ namespace gacha_utilities {
 
 	template<typename type, typename alloc>
 	template<typename Iterator>
-	inline void GachaPool<type, alloc>::__copy(Iterator BeginIter, Iterator EndIter){
+	inline void GachaPool<type, alloc>::__apparent_copy(Iterator BeginIter, Iterator EndIter){
 		auto range = std::distance(BeginIter, EndIter);
 		auto anchor = BeginIter;
-		for (DifferenceType i = 0; i < range; i++, anchor) {
+		for (DifferenceType i = 0; i < range; i++, anchor++) {
 			this->data[i] = (*anchor);
 		}
 	}
@@ -974,6 +1010,7 @@ namespace gacha_utilities {
 		using namespace gachapoolexceptions;
 		if (CopySize > this->maxsize()) throw SizeBeyondMaximum();
 		else if (CopySize > this->datasize) throw CopySizeBeyondAllocation();
+		else if (CopySize != this->datasize) throw CopySizeMismatch();
 	}
 
 	template<typename type, typename alloc>
