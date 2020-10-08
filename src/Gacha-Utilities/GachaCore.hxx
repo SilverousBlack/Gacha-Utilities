@@ -227,6 +227,8 @@ namespace gacha_utilities {
 		GachaPool<type, alloc>& apparent_copy(Container target);
 		template<typename Iterator>
 		GachaPool<type, alloc>& apparent_copy(Iterator BeginIter, Iterator EndIter);
+		template<typename Container>
+		GachaPool<type, alloc>& hard_copy(Container target);
 
 		template<typename Container>
 		bool hard_compare(Container target, bool (*Comparator)(InternalType, InternalType) = [](InternalType left, InternalType right) { return left == right });
